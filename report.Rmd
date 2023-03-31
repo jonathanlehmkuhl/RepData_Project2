@@ -1,0 +1,72 @@
+---
+title: "Influence of Weather Events on Population Health and Economy"
+author: "Jonathan Lehmkuhl"
+date: "2023-03-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# SYNOPSIS
+The U.S. National Oceanic and Atmospheric Administration's (**NOAA**) storm database
+tracks characteristics of major storms and weather events in the United States,
+including when and where they occur, as well as estimates of any fatalities, injuries, and property damage. The database that we used can be found [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2).
+
+We want to investigate the influence that these weather events have on population
+health as well as economy. More concretely, we want to find out which types of events have the most impact on these factors.
+
+# DATA PREPROCESSING
+
+We download the data file and read it into a data frame.
+
+```{r, cache = TRUE}
+
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "data.csv.bz2")
+
+data <- read.csv("data.csv.bz2")
+```
+
+We choose **FATALITIES** and **INJURIES** as the most relevant variables to investigate
+the impact on population health and **PROPDMG** (property damage) as the most relevant
+variable with respect to economy. Moreover, we want to look at **EVTYPE** (event type) and **BGN_DATE** (date of event). To keep our analysis more simple and focused on the essentials, we reduce our data frame to these variables.
+
+```{r}
+suppressMessages(library(dplyr))
+data_reduced <- select(data, BGN_DATE, EVTYPE, FATALITIES, INJURIES, PROPDMG)
+```
+
+Since we want to find out, which types of event have the most impact, let us look on the available event types.
+
+```{r}
+evtypes <- data_reduced$EVTYPE
+length(unique(evtypes))
+head(table(evtypes))
+```
+
+As we see, there are a total of 985 event types but many of them occur only a small number of times. Also there are many typing errors, which additionally increase the number of event types. We will ignore these and moreover focus on the event types with the most amount of data available, since these makes statistical conclusions that we are going to drive from these more generalizable.
+
+```{r}
+ev_table <- table(evtypes)
+ev_table[ev_table > 50000]
+```
+
+We want to focus on the types of events for which more than fifty thousand instances exist. We see that these are **flash floods**, **hails**, **tornados** and **thunderstorm winds**. Note that there are two categories that both represent the event type thunderstorm wind. We will merge both together before sub-setting to the above event types. We get our final data frame **df**, upon which we are going to build our analysis.
+
+```{r}
+data_reduced[data_reduced$EVTYPE == "TSTM WIND", "EVTYPE"] <- "THUNDERSTORM WIND"
+ev_table <- table(data_reduced$EVTYPE)
+ev_table[ev_table > 50000]
+
+df <- filter(data_reduced, EVTYPE %in% c("FLASH FLOOD", "HAIL", "TORNADO", "THUNDERSTORM WIND"))
+df$EVTYPE <- as.factor(df$EVTYPE)
+```
+
+Note that according to the [description](https://www.ncdc.noaa.gov/stormevents/details.jsp) of the event types, the event type **flash flood** only exists since 1996 and that until 1955 only the event type **tornado** existed.
+
+# RESULTS
+## IMPACT ON POPULATION HEALTH
+
+
+## IMPACT ON ECONOMY
