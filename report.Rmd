@@ -1,8 +1,10 @@
 ---
-title: "Influence of Weather Events on Population Health and Economy"
+title: "Influence of Weather Events on Population Health and Economy by Event Type"
 author: "Jonathan Lehmkuhl"
 date: "2023-03-24"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -14,8 +16,9 @@ The U.S. National Oceanic and Atmospheric Administration's (**NOAA**) storm data
 tracks characteristics of major storms and weather events in the United States,
 including when and where they occur, as well as estimates of any fatalities, injuries, and property damage. The database that we used can be found [here](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2).
 
-We want to investigate the influence that these weather events have on population
-health as well as economy. More concretely, we want to find out which types of events have the most impact on these factors.
+We want to investigate, which types of weather events are most harmful to population health and economy. These insights, for example, could be used to prepare for predicted weather events more effectively.
+
+In our analysis we restricted our selfs on the event types flash flood, flood, hail, snow, wind, lightning, thunderstorm wind and tornado. Carrying out the analysis shown below, we found out that tornadoes and lightnings should be prepared for with great care. These are by far most severe with respect to population health. Economcially, a damage should be expected for every event type. However, tornadoes and lightning again create the most damage.
 
 # DATA PREPROCESSING
 
@@ -23,9 +26,11 @@ We download the data file and read it into a data frame.
 
 ```{r, cache = TRUE}
 
-download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "data.csv.bz2")
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", "data.csv.bz2", method = "auto")
 
 data <- read.csv("data.csv.bz2")
+
+names(data)
 ```
 
 We choose **FATALITIES** and **INJURIES** as the most relevant variables to investigate
@@ -35,6 +40,7 @@ variable with respect to economy. Moreover, we want to look at **EVTYPE** (event
 ```{r}
 suppressMessages(library(dplyr))
 data_reduced <- select(data, BGN_DATE, EVTYPE, FATALITIES, INJURIES, PROPDMG)
+head(data_reduced)
 ```
 
 Since we want to find out, which types of event have the most impact, let us look on the available event types.
@@ -42,31 +48,79 @@ Since we want to find out, which types of event have the most impact, let us loo
 ```{r}
 evtypes <- data_reduced$EVTYPE
 length(unique(evtypes))
+```
+
+As we see, there are a total of 985 event types.
+
+```{r}
 head(table(evtypes))
 ```
 
-As we see, there are a total of 985 event types but many of them occur only a small number of times. Also there are many typing errors, which additionally increase the number of event types. We will ignore these and moreover focus on the event types with the most amount of data available, since these makes statistical conclusions that we are going to drive from these more generalizable.
+However, as we can see in the table, there are event types which only occur a small number of times. To make generalizable statements about weather events, we only want to look at event types for which a large amount of data is available.
 
 ```{r}
 ev_table <- table(evtypes)
-ev_table[ev_table > 50000]
+ev_table[ev_table > 15000]
 ```
 
-We want to focus on the types of events for which more than fifty thousand instances exist. We see that these are **flash floods**, **hails**, **tornados** and **thunderstorm winds**. Note that there are two categories that both represent the event type thunderstorm wind. We will merge both together before sub-setting to the above event types. We get our final data frame **df**, upon which we are going to build our analysis.
+We decide to focus on the types of events for which more than fifteen thousand instances exist. We see that these are ten types of events. However, there are three categories all representing the event type thunderstorm wind, which we want to merge together.
 
 ```{r}
-data_reduced[data_reduced$EVTYPE == "TSTM WIND", "EVTYPE"] <- "THUNDERSTORM WIND"
+data_reduced[data_reduced$EVTYPE %in% c("TSTM WIND", "THUNDERSTORM WINDS"), "EVTYPE"] <- "THUNDERSTORM WIND"
 ev_table <- table(data_reduced$EVTYPE)
-ev_table[ev_table > 50000]
+ev_table <- ev_table[ev_table > 15000]
 
-df <- filter(data_reduced, EVTYPE %in% c("FLASH FLOOD", "HAIL", "TORNADO", "THUNDERSTORM WIND"))
+df <- filter(data_reduced, EVTYPE %in% names(ev_table))
 df$EVTYPE <- as.factor(df$EVTYPE)
+levels(df$EVTYPE)
 ```
 
-Note that according to the [description](https://www.ncdc.noaa.gov/stormevents/details.jsp) of the event types, the event type **flash flood** only exists since 1996 and that until 1955 only the event type **tornado** existed.
+We get our final data frame **df**, upon which we are going to build our analysis. **df** only consists of the event types **FLASH FLOOD**, **FLOOD**, **HAIL**, **HEAVY SNOW**, **HIGH WIND**, **LIGHTNING**, **THUNDERSTORM WIND** and **TORNADO**.
 
 # RESULTS
 ## IMPACT ON POPULATION HEALTH
 
+To evaluate the impact that weather events have on population health, let us first look at injuries. To determine how harmful an event type is with respect to injuries, we compute the mean and the maximal number of injuries for each event type. In addition, we compute the probability that there is at least one injured person for an event.
+
+```{r}
+df %>% group_by(EVTYPE) %>% summarize(INJ_MEAN = mean(INJURIES), INJ_MAX = max(INJURIES), PROB = mean(as.logical(INJURIES))) %>% arrange(desc(INJ_MEAN))
+```
+
+We see that for tornado and lightning more than ten percent of the events lead to injured persons. All other event types have probabilities of two percent or less. Tornado and lightning also have the highest average values and tornado has the highest maximum of injured persons.
+
+```{r, cache = TRUE}
+library(lattice)
+
+xyplot(log10(INJURIES + 1) ~ EVTYPE, data = df, xlab = c("flash flood", "flood", "hail", "snow", "wind", "lightning", "tstm wind", "tornado"), scales = list(x = list(draw = FALSE)), ylab = "logarithmic number of injuries", main = "Injuries by Event Type", pch = 16, col = rgb(red = 0, green = 0.3, blue = 0.7, alpha = 0.4))
+```
+
+Plotting all injuries, we see again that tornadoes seem to be most dominant with respect to injuries.
+
+We now look at fatalities by event type. We compute the same table as above.
+
+```{r}
+df %>% group_by(EVTYPE) %>% summarize(FAT_MEAN = mean(FATALITIES), FAT_MAX = max(FATALITIES), PROB = mean(as.logical(FATALITIES))) %>% arrange(desc(FAT_MEAN))
+```
+
+We see that considering fatalities, tornado and lightning again have the highest probabilities and the highest mean.
+
+```{r, cache = TRUE}
+xyplot(FATALITIES ~ EVTYPE, data = df, xlab = c("flash flood", "flood", "hail", "snow", "wind", "lightning", "tstm wind", "tornado"), scales = list(x = list(draw = FALSE)), ylab = "number of fatalities", main = "Fatalities by Event Type", pch = 16, col = rgb(red = 0, green = 0.3, blue = 0.7, alpha = 0.4))
+```
+
+Plotting all fatalities, we again see the dominance of tornadoes.
+
+In total, we conclude that tornadoes are by far the most dangerous events with respect to population health. The second event type that should be prepared for with great care are lightnings.
 
 ## IMPACT ON ECONOMY
+
+To evaluate the impact of weather events on the economy, we look at the mean and maximum property damage for each event type.
+
+```{r}
+df %>% group_by(EVTYPE) %>% summarize(ECO_MEAN = mean(PROPDMG), ECO_MAX = max(PROPDMG), ECO_PROB = mean(as.logical(PROPDMG))) %>% arrange(desc(ECO_MEAN))
+```
+
+We see that tornado and lightning lead to the highest property damage on average, namely 53.000 and 38.300 US Dollars.
+Flood, flash flood and high wind also have an average damage of more than 10.000 US Dollars. Tornado and lightning are the only events that in most cases have some property damage. But for flood, flash flood, high wind and thunderstorm wind there also is property damage in more than one quarter of the cases.
+
+Thus, as with respect to population health, tornadoes and lightning do the most damage. But in contrast to population health, for all event types an economical damage should be expected.

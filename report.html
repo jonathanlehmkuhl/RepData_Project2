@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>Influence of Weather Events on Population Health and Economy by Event Type</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.6.0/build/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/combine/gh/highlightjs/cdn-release@11.6.0/build/highlight.min.js,npm/@xiee/utils/js/load-highlight.js" async></script>
+
+
+
+<style type="text/css">
+body, td {
+  font-family: sans-serif;
+  background-color: white;
+  font-size: 13px;
+}
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 1.5;
+}
+tt, code, pre {
+  font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+a:visited { color: #80007f; }
+pre, img { max-width: 100%; }
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+code[class] { background-color: #F8F8F8; }
+code.language-undefined { background-color: inherit; }
+table {
+  margin: auto;
+  border-top: 1px solid #666;
+  border-bottom: 1px solid #666;
+}
+table thead th { border-bottom: 1px solid #ddd; }
+th, td { padding: 5px; }
+thead, tfoot, tr:nth-child(even) { background: #eee; }
+blockquote {
+  color:#666;
+  margin:0;
+  padding-left: 1em;
+  border-left: 0.5em #eee solid;
+}
+hr { border: 1px #ddd dashed; }
+
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    filter:none !important;
+  }
+  body {
+    font-size: 12pt;
+    max-width: 100%;
+  }
+  a, a:visited { text-decoration: underline; }
+  hr {
+    visibility: hidden;
+    page-break-before: always;
+  }
+  pre, blockquote {
+    padding-right: 1em;
+    page-break-inside: avoid;
+  }
+  tr, img { page-break-inside: avoid; }
+  img { max-width: 100% !important; }
+  @page :left { margin: 15mm 20mm 15mm 10mm; }
+  @page :right { margin: 15mm 10mm 15mm 20mm; }
+  p, h2, h3 { orphans: 3; widows: 3; }
+  h2, h3 { page-break-after: avoid; }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<h1>SYNOPSIS</h1>
+<p>The U.S. National Oceanic and Atmospheric Administration’s (<strong>NOAA</strong>) storm database
+tracks characteristics of major storms and weather events in the United States,
+including when and where they occur, as well as estimates of any fatalities, injuries, and property damage. The database that we used can be found <a href="https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2">here</a>.</p>
+<p>We want to investigate, which types of weather events are most harmful to population health and economy. These insights, for example, could be used to prepare for predicted weather events more effectively.</p>
+<p>In our analysis we restricted our selfs on the event types flash flood, flood, hail, snow, wind, lightning, thunderstorm wind and tornado. Carrying out the analysis shown below, we found out that tornadoes and lightnings should be prepared for with great care. These are by far most severe with respect to population health. Economcially, a damage should be expected for every event type. However, tornadoes and lightning again create the most damage.</p>
+<h1>DATA PREPROCESSING</h1>
+<p>We download the data file and read it into a data frame.</p>
+<pre><code class="language-r">download.file(&quot;https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2&quot;, &quot;data.csv.bz2&quot;, method = &quot;auto&quot;)
+
+data &lt;- read.csv(&quot;data.csv.bz2&quot;)
+
+names(data)
+</code></pre>
+<pre><code>##  [1] &quot;STATE__&quot;    &quot;BGN_DATE&quot;   &quot;BGN_TIME&quot;   &quot;TIME_ZONE&quot;  &quot;COUNTY&quot;     &quot;COUNTYNAME&quot; &quot;STATE&quot;      &quot;EVTYPE&quot;     &quot;BGN_RANGE&quot; 
+## [10] &quot;BGN_AZI&quot;    &quot;BGN_LOCATI&quot; &quot;END_DATE&quot;   &quot;END_TIME&quot;   &quot;COUNTY_END&quot; &quot;COUNTYENDN&quot; &quot;END_RANGE&quot;  &quot;END_AZI&quot;    &quot;END_LOCATI&quot;
+## [19] &quot;LENGTH&quot;     &quot;WIDTH&quot;      &quot;F&quot;          &quot;MAG&quot;        &quot;FATALITIES&quot; &quot;INJURIES&quot;   &quot;PROPDMG&quot;    &quot;PROPDMGEXP&quot; &quot;CROPDMG&quot;   
+## [28] &quot;CROPDMGEXP&quot; &quot;WFO&quot;        &quot;STATEOFFIC&quot; &quot;ZONENAMES&quot;  &quot;LATITUDE&quot;   &quot;LONGITUDE&quot;  &quot;LATITUDE_E&quot; &quot;LONGITUDE_&quot; &quot;REMARKS&quot;   
+## [37] &quot;REFNUM&quot;
+</code></pre>
+<p>We choose <strong>FATALITIES</strong> and <strong>INJURIES</strong> as the most relevant variables to investigate
+the impact on population health and <strong>PROPDMG</strong> (property damage) as the most relevant
+variable with respect to economy. Moreover, we want to look at <strong>EVTYPE</strong> (event type) and <strong>BGN_DATE</strong> (date of event). To keep our analysis more simple and focused on the essentials, we reduce our data frame to these variables.</p>
+<pre><code class="language-r">suppressMessages(library(dplyr))
+data_reduced &lt;- select(data, BGN_DATE, EVTYPE, FATALITIES, INJURIES, PROPDMG)
+head(data_reduced)
+</code></pre>
+<pre><code>##             BGN_DATE  EVTYPE FATALITIES INJURIES PROPDMG
+## 1  4/18/1950 0:00:00 TORNADO          0       15    25.0
+## 2  4/18/1950 0:00:00 TORNADO          0        0     2.5
+## 3  2/20/1951 0:00:00 TORNADO          0        2    25.0
+## 4   6/8/1951 0:00:00 TORNADO          0        2     2.5
+## 5 11/15/1951 0:00:00 TORNADO          0        2     2.5
+## 6 11/15/1951 0:00:00 TORNADO          0        6     2.5
+</code></pre>
+<p>Since we want to find out, which types of event have the most impact, let us look on the available event types.</p>
+<pre><code class="language-r">evtypes &lt;- data_reduced$EVTYPE
+length(unique(evtypes))
+</code></pre>
+<pre><code>## [1] 985
+</code></pre>
+<p>As we see, there are a total of 985 event types.</p>
+<pre><code class="language-r">head(table(evtypes))
+</code></pre>
+<pre><code>## evtypes
+##    HIGH SURF ADVISORY         COASTAL FLOOD           FLASH FLOOD             LIGHTNING             TSTM WIND 
+##                     1                     1                     1                     1                     4 
+##       TSTM WIND (G45) 
+##                     1
+</code></pre>
+<p>However, as we can see in the table, there are event types which only occur a small number of times. To make generalizable statements about weather events, we only want to look at event types for which a large amount of data is available.</p>
+<pre><code class="language-r">ev_table &lt;- table(evtypes)
+ev_table[ev_table &gt; 15000]
+</code></pre>
+<pre><code>## evtypes
+##        FLASH FLOOD              FLOOD               HAIL         HEAVY SNOW          HIGH WIND          LIGHTNING 
+##              54277              25326             288661              15708              20212              15754 
+##  THUNDERSTORM WIND THUNDERSTORM WINDS            TORNADO          TSTM WIND 
+##              82563              20843              60652             219940
+</code></pre>
+<p>We decide to focus on the types of events for which more than fifteen thousand instances exist. We see that these are ten types of events. However, there are three categories all representing the event type thunderstorm wind, which we want to merge together.</p>
+<pre><code class="language-r">data_reduced[data_reduced$EVTYPE %in% c(&quot;TSTM WIND&quot;, &quot;THUNDERSTORM WINDS&quot;), &quot;EVTYPE&quot;] &lt;- &quot;THUNDERSTORM WIND&quot;
+ev_table &lt;- table(data_reduced$EVTYPE)
+ev_table &lt;- ev_table[ev_table &gt; 15000]
+
+df &lt;- filter(data_reduced, EVTYPE %in% names(ev_table))
+df$EVTYPE &lt;- as.factor(df$EVTYPE)
+levels(df$EVTYPE)
+</code></pre>
+<pre><code>## [1] &quot;FLASH FLOOD&quot;       &quot;FLOOD&quot;             &quot;HAIL&quot;              &quot;HEAVY SNOW&quot;        &quot;HIGH WIND&quot;        
+## [6] &quot;LIGHTNING&quot;         &quot;THUNDERSTORM WIND&quot; &quot;TORNADO&quot;
+</code></pre>
+<p>We get our final data frame <strong>df</strong>, upon which we are going to build our analysis. <strong>df</strong> only consists of the event types <strong>FLASH FLOOD</strong>, <strong>FLOOD</strong>, <strong>HAIL</strong>, <strong>HEAVY SNOW</strong>, <strong>HIGH WIND</strong>, <strong>LIGHTNING</strong>, <strong>THUNDERSTORM WIND</strong> and <strong>TORNADO</strong>.</p>
+<h1>RESULTS</h1>
+<h2>IMPACT ON POPULATION HEALTH</h2>
+<p>To evaluate the impact that weather events have on population health, let us first look at injuries. To determine how harmful an event type is with respect to injuries, we compute the mean and the maximal number of injuries for each event type. In addition, we compute the probability that there is at least one injured person for an event.</p>
+<pre><code class="language-r">df %&gt;% group_by(EVTYPE) %&gt;% summarize(INJ_MEAN = mean(INJURIES), INJ_MAX = max(INJURIES), PROB = mean(as.logical(INJURIES))) %&gt;% arrange(desc(INJ_MEAN))
+</code></pre>
+<pre><code>## # A tibble: 8 x 4
+##   EVTYPE            INJ_MEAN INJ_MAX     PROB
+##   &lt;fct&gt;                &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+## 1 TORNADO            1.51       1700 0.127   
+## 2 LIGHTNING          0.332        51 0.178   
+## 3 FLOOD              0.268       800 0.00612 
+## 4 HEAVY SNOW         0.0650      185 0.00828 
+## 5 HIGH WIND          0.0563       70 0.0203  
+## 6 FLASH FLOOD        0.0327      150 0.00698 
+## 7 THUNDERSTORM WIND  0.0289       70 0.0112  
+## 8 HAIL               0.00471     109 0.000970
+</code></pre>
+<p>We see that for tornado and lightning more than ten percent of the events lead to injured persons. All other event types have probabilities of two percent or less. Tornado and lightning also have the highest average values and tornado has the highest maximum of injured persons.</p>
+<pre><code class="language-r">library(lattice)
+
+xyplot(log10(INJURIES + 1) ~ EVTYPE, data = df, xlab = c(&quot;flash flood&quot;, &quot;flood&quot;, &quot;hail&quot;, &quot;snow&quot;, &quot;wind&quot;, &quot;lightning&quot;, &quot;tstm wind&quot;, &quot;tornado&quot;), scales = list(x = list(draw = FALSE)), ylab = &quot;logarithmic number of injuries&quot;, main = &quot;Injuries by Event Type&quot;, pch = 16, col = rgb(red = 0, green = 0.3, blue = 0.7, alpha = 0.4))
+</code></pre>
+<p><img src="data:image/png;base64,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" alt="plot of chunk unnamed-chunk-8" /></p>
+<p>Plotting all injuries, we see again that tornadoes seem to be most dominant with respect to injuries.</p>
+<p>We now look at fatalities by event type. We compute the same table as above.</p>
+<pre><code class="language-r">df %&gt;% group_by(EVTYPE) %&gt;% summarize(FAT_MEAN = mean(FATALITIES), FAT_MAX = max(FATALITIES), PROB = mean(as.logical(FATALITIES))) %&gt;% arrange(desc(FAT_MEAN))
+</code></pre>
+<pre><code>## # A tibble: 8 x 4
+##   EVTYPE             FAT_MEAN FAT_MAX      PROB
+##   &lt;fct&gt;                 &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;
+## 1 TORNADO           0.0929        158 0.0264   
+## 2 LIGHTNING         0.0518          5 0.0482   
+## 3 FLOOD             0.0186         15 0.0118   
+## 4 FLASH FLOOD       0.0180         20 0.0117   
+## 5 HIGH WIND         0.0123          8 0.00905  
+## 6 HEAVY SNOW        0.00809         8 0.00579  
+## 7 THUNDERSTORM WIND 0.00217        11 0.00175  
+## 8 HAIL              0.0000520       4 0.0000381
+</code></pre>
+<p>We see that considering fatalities, tornado and lightning again have the highest probabilities and the highest mean.</p>
+<pre><code class="language-r">xyplot(FATALITIES ~ EVTYPE, data = df, xlab = c(&quot;flash flood&quot;, &quot;flood&quot;, &quot;hail&quot;, &quot;snow&quot;, &quot;wind&quot;, &quot;lightning&quot;, &quot;tstm wind&quot;, &quot;tornado&quot;), scales = list(x = list(draw = FALSE)), ylab = &quot;number of fatalities&quot;, main = &quot;Fatalities by Event Type&quot;, pch = 16, col = rgb(red = 0, green = 0.3, blue = 0.7, alpha = 0.4))
+</code></pre>
+<p><img src="data:image/png;base64,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" alt="plot of chunk unnamed-chunk-10" /></p>
+<p>Plotting all fatalities, we again see the dominance of tornadoes.</p>
+<p>In total, we conclude that tornadoes are by far the most dangerous events with respect to population health. The second event type that should be prepared for with great care are lightnings.</p>
+<h2>IMPACT ON ECONOMY</h2>
+<p>To evaluate the impact of weather events on the economy, we look at the mean and maximum property damage for each event type.</p>
+<pre><code class="language-r">df %&gt;% group_by(EVTYPE) %&gt;% summarize(ECO_MEAN = mean(PROPDMG), ECO_MAX = max(PROPDMG), ECO_PROB = mean(as.logical(PROPDMG))) %&gt;% arrange(desc(ECO_MEAN))
+</code></pre>
+<pre><code>## # A tibble: 8 x 4
+##   EVTYPE            ECO_MEAN ECO_MAX ECO_PROB
+##   &lt;fct&gt;                &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+## 1 TORNADO              53.0     4410   0.644 
+## 2 LIGHTNING            38.3     1000   0.653 
+## 3 FLOOD                35.5     3000   0.383 
+## 4 FLASH FLOOD          26.2     5000   0.379 
+## 5 HIGH WIND            16.1     3000   0.264 
+## 6 THUNDERSTORM WIND     8.22    5000   0.358 
+## 7 HEAVY SNOW            7.78     950   0.0787
+## 8 HAIL                  2.39     970   0.0798
+</code></pre>
+<p>We see that tornado and lightning lead to the highest property damage on average, namely 53.000 and 38.300 US Dollars.
+Flood, flash flood and high wind also have an average damage of more than 10.000 US Dollars. Tornado and lightning are the only events that in most cases have some property damage. But for flood, flash flood, high wind and thunderstorm wind there also is property damage in more than one quarter of the cases.</p>
+<p>Thus, as with respect to population health, tornadoes and lightning do the most damage. But in contrast to population health, for all event types an economical damage should be expected.</p>
+
+
+<script src="https://cdn.jsdelivr.net/combine/npm/@xiee/utils/js/center-img.min.js" async></script>
+</body>
+
+</html>
